@@ -10,7 +10,7 @@ from langchain_community.document_loaders import PyPDFLoader
 # 벡터 DB 파일 경로
 VECTOR_DB_PATH = "faiss_index"
 
-# 1. 벡터 DB
+# 1. 벡터 DB 파일이 없으면 생성 후 vector_store 리턴
 def create_vector_db():
     # 1-1. 문서 로딩 (Document Loading)
     loader = PyPDFLoader("C:\\___Workspace\\Llama\\test\\llama_test\\LLM_test\\doc\\news_weather.pdf")
