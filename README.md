@@ -40,3 +40,8 @@ HelloLlama.net 에서 제공하는 LLM 초급강좌의 실습파일입니다.
 7. LangSmith 활용하기
 - LangSmith 실습 1: LangSmith 프로젝트 생성과 동작 모니터링
 - LangSmith 실습 2: 프롬프트 허브를 이용하는 방법
+
+8. Agent 와 다양한 도구 활용법
+- Agent 실습 1: 검색엔진을 활용하는 챗봇 만들기
+- Agent 실습 2: 두 개의 도구를 함께 사용하는 Agent 구현
+  
