@@ -94,16 +94,16 @@ except Exception as e:
 # 1-6. 뉴스 요약 PROMPT Template 생성
 summary_prompt = hub.pull("hellollama/news_summary")
 
-# 1-7. 뉴스 요약 체인 (테스트용 체인)
+# 1-7. 뉴스 요약에 사용할 LLM 초기화
+llm = Ollama(model="llama3.1", temperature=0)
+
+# 1-8. 뉴스 요약 체인 (테스트용 체인)
 summary_chain = summary_prompt | llm | StrOutputParser()
 
 ################################################################
 # 2. 평가 단계
 ################################################################
-# 2-1. 뉴스 요약에 사용할 LLM 초기화
-llm = Ollama(model="llama3.1", temperature=0)
-
-# 2-2. 뉴스 요약 결과를 평가할 LLM 초기화
+# 2-1. 뉴스 요약 결과를 평가할 LLM 초기화
 openai_api_key = os.getenv("OPENAI_API_KEY")  # OpenAI API 키 가져오기
 evaluator_llm = ChatOpenAI(
     temperature=0,  # 정확성 <-> 창의성 (0.0 ~ 2.0)
@@ -115,7 +115,7 @@ evaluator_llm = ChatOpenAI(
 print("----- Set evaluation configurations")
 
 
-# 2-3. 평가 결과에서 score 추출해서 하나의 리포트로 만들어주는 함수
+# 2-2. 평가 결과에서 score 추출해서 하나의 리포트로 만들어주는 함수
 def batch_evaluator(runs: List[Run], examples: List[Example]):
     """evaluator 실행 결과를 취합해서 점수로 환산"""
     print("\n\n----- Run batch_evaluator")
@@ -142,39 +142,25 @@ def batch_evaluator(runs: List[Run], examples: List[Example]):
     return EvaluationResult(key="score", score=average_score)
 
 
-# 2-4. 평가 기준 정의
+# 2-3. 평가 기준 정의
 criteria = {
     "clarity": "The explanation should be clear and easy to understand. Express score as a number between 1-10. Write score between <clarity></clarity> tag",  # 명료성
     "accuracy": "The information provided should be factually correct. Express score as a number between 1-10. Write score between <accuracy></accuracy> tag",  # 사실성
     "conciseness": "The explanation should be concise and to the point. Express score as a number between 1-10. Write score between <conciseness></conciseness> tag",  # 정확성
-    "score": "Average of the clarity, accuracy, and conciseness score as a number between 1-10. Write average score between <score></score> tag", # 종합 평가 점수 (평균)
+    "score": "Average of the clarity, accuracy, and conciseness score as a number between 1-10. Write average score between <score></score> tag",  # 종합 평가 점수 (평균)
 }
 
-# 2-5. 평가용 프롬프트
-evaluation_prompt = PromptTemplate(
-    template="""
-Human: You are assessing a piece of text based on specific criteria. The criteria are:
-{criteria}
+# 2-4. 평가용 프롬프트
+evaluation_prompt = hub.pull("hellollama/summary_evaluator")
 
-The text to evaluate is:
-{input}
-
-The output to evaluate is:
-{output}
-
-Please rate each criterion on a scale of 1 to 10, where 1 is the lowest score and 10 is the highest score.
-Provide a brief explanation for each rating.
-"""
-)
-
-# 2-6. 평가용 체인 - evaluator 생성
+# 2-5. 평가용 체인 - evaluator 생성
 evaluator = CriteriaEvalChain.from_llm(
     llm=evaluator_llm,
     criteria=criteria,
     prompt=evaluation_prompt,
 )
 
-# 2-7. 평가용 환경설정
+# 2-6. 평가용 환경설정
 evaluation_config = RunEvalConfig(
     # 주의!! LLM 지정없이 아래와 같이 실행하면 GPT-4o 로 실행됨
     # evaluators=[RunEvalConfig.Criteria(criteria)],
@@ -183,7 +169,7 @@ evaluation_config = RunEvalConfig(
     batch_evaluators=[batch_evaluator],
 )
 
-# 2-8. 평가용 환경설정을 추가해서 데이터셋 데이터에 뉴스 요약 체인을 실행
+# 2-7. 평가용 환경설정을 추가해서 데이터셋 데이터에 뉴스 요약 체인을 실행
 chain_results = run_on_dataset(
     dataset_name=project_name,
     llm_or_chain_factory=summary_chain,
@@ -216,9 +202,9 @@ for result_key, result_value in chain_results["results"].items():
     # 4. result -> reference -> output 문자열
     reference_output_list.append(result_value["reference"]["output"])
 
-# 2-9. 결과 출력
+# 2-8. 결과 출력
 print("Input News List:", input_news_list)
 print("Output String List:", output_string_list)
 print("Run ID List:", run_id_list)
 print("Reference Output List:", reference_output_list)
-print(f"{chain_results["aggregate_metrics"][0]["key"]} = {chain_results["aggregate_metrics"][0]["score"]}")
+print("aggregate_metrics:", chain_results["aggregate_metrics"])
